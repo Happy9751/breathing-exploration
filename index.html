@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f4f0e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131922" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Take five minutes for yourself. Nothing to achieve, just follow the circle.">
+<title>Breathing exploration</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='%234f6878' fill-opacity='.3' stroke='%234f6878'/%3E%3C/svg%3E">
+<style>
+  /* ---------- Paleta ---------- */
+  :root {
+    --bg: #f4f0e8;            /* arena muy clara */
+    --ink: #33373b;           /* gris tinta suave (10.6:1) */
+    --ink-soft: #5b6065;      /* texto secundario (5.6:1) */
+    --accent: #4f6878;        /* gris azulado de fiordo (5.2:1) */
+    --line: #d9d2c5;          /* líneas decorativas */
+    --bar: #b3ada2;           /* barras de nota sin destacar */
+    --tint: rgba(79, 104, 120, .07);
+    --tint-strong: rgba(79, 104, 120, .16);
+    --lung-in: rgba(72, 110, 138, .19);     /* fiordo */
+    --lung-hold: rgba(96, 112, 122, .15);
+    --lung-out: rgba(100, 134, 108, .19);   /* salvia */
+    --lung-edge: rgba(72, 104, 128, .3);
+    --halo: rgba(72, 110, 138, .3);
+    --ease: cubic-bezier(.45, .05, .35, 1);
+    --fade: 700ms;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131922;          /* azul noche apagado */
+      --ink: #e8e2d5;         /* hueso (13.7:1) */
+      --ink-soft: #aaa59b;    /* 7.2:1 */
+      --accent: #93aab7;      /* 7.3:1 */
+      --line: #2b3441;
+      --bar: #56606c;
+      --tint: rgba(147, 170, 183, .07);
+      --tint-strong: rgba(147, 170, 183, .17);
+      --lung-in: rgba(150, 180, 200, .17);
+      --lung-hold: rgba(160, 172, 180, .13);
+      --lung-out: rgba(155, 185, 160, .16);
+      --lung-edge: rgba(150, 180, 200, .3);
+      --halo: rgba(150, 180, 200, .26);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root { --fade: 300ms; }
+  }
+
+  /* ---------- Base ---------- */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: 1.55;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  [tabindex="-1"]:focus { outline: none; }
+  h1, h2, p { margin: 0; }
+  .sr {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* ---------- Selector de idioma ---------- */
+  .top {
+    display: flex;
+    justify-content: flex-end;
+    padding: max(1rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) 0 1.25rem;
+  }
+  .langs {
+    display: flex;
+    align-items: center;
+    font-size: .9375rem;
+    color: var(--ink-soft);
+  }
+  .langs button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 .35rem;
+    letter-spacing: .05em;
+    border-radius: .5rem;
+    transition: color .4s ease;
+  }
+  .langs button[aria-pressed="true"] {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: .45em;
+  }
+  .langs .sep { opacity: .6; }
+
+  /* ---------- Pantallas ---------- */
+  main {
+    flex: 1 0 auto;
+    display: grid;
+    place-items: center;
+    padding: 1rem 1.5rem max(2rem, env(safe-area-inset-bottom));
+  }
+  .screen {
+    grid-area: 1 / 1;
+    width: 100%;
+    max-width: 30rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    opacity: 0;
+    transition: opacity var(--fade) ease;
+  }
+  .screen.is-in { opacity: 1; }
+  .screen[hidden] { display: none; }
+
+  .label {
+    font-size: 1rem;
+    color: var(--ink-soft);
+    letter-spacing: .02em;
+  }
+  .label .step { opacity: .8; }
+
+  .btn {
+    min-height: 3.5rem;
+    padding: 1rem 3rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    font-size: 1.125rem;
+    letter-spacing: .02em;
+    transition: background-color .5s ease;
+  }
+  .btn:active { background: var(--tint-strong); }
+
+  /* Hover solo con ratón: en móvil se quedaría "pegado" tras tocar */
+  @media (hover: hover) {
+    .langs button:hover, .skip:hover { color: var(--ink); }
+    .btn:hover, .row:hover { background: var(--tint); }
+    .dot:hover { background: var(--tint-strong); }
+    .is-chosen .row:hover { background: none; }
+  }
+
+  /* ---------- Inicio ---------- */
+  .seed {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    background: var(--lung-in);
+    border: 1px solid var(--lung-edge);
+    animation: seed 10s var(--ease) infinite;
+  }
+  @keyframes seed {
+    0%, 100% { transform: scale(.76); }
+    50% { transform: scale(1); }
+  }
+  .invite, .invite-2, .question, .note { text-wrap: balance; }
+  .invite {
+    margin-top: 2rem;
+    font-size: clamp(1.75rem, 7.5vw, 2.25rem);
+    font-weight: 300;
+    line-height: 1.25;
+    letter-spacing: -.005em;
+  }
+  .invite-2 {
+    margin-top: .75rem;
+    max-width: 22ch;
+    font-size: 1.375rem;
+    font-weight: 300;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+  .meta {
+    margin: 1.25rem 0 2.25rem;
+    font-size: 1rem;
+    color: var(--ink-soft);
+  }
+  .toggles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .25rem 2rem;
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    color: var(--ink-soft);
+  }
+  .switch {
+    display: inline-flex;
+    align-items: center;
+    gap: .65rem;
+    min-height: 2.75rem;
+    padding: 0 .25rem;
+    border-radius: .5rem;
+  }
+  .switch[hidden] { display: none; }
+  .track {
+    position: relative;
+    width: 2.25rem;
+    height: 1.25rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    transition: background-color .4s ease;
+  }
+  .knob {
+    position: absolute;
+    top: 50%;
+    left: .2rem;
+    width: .75rem;
+    height: .75rem;
+    margin-top: -.375rem;
+    border-radius: 50%;
+    background: var(--ink-soft);
+    transition: transform .45s var(--ease), background-color .45s ease;
+  }
+  .switch[aria-checked="true"] { color: var(--ink); }
+  .switch[aria-checked="true"] .track { background: var(--tint-strong); }
+  .switch[aria-checked="true"] .knob { transform: translateX(1rem); background: var(--accent); }
+  .note {
+    max-width: 25rem;
+    margin-top: 2rem;
+    font-size: .9375rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Respiración ---------- */
+  .stage {
+    --size: min(76vw, 20rem, 44vh);
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    margin: 1.75rem 0 1.5rem;
+  }
+  .ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    overflow: visible;
+  }
+  .ring circle { fill: none; stroke-width: .5; }
+  .ring-track { stroke: var(--line); }
+  .ring-fill {
+    stroke: var(--accent);
+    stroke-dasharray: 307.876;
+    stroke-dashoffset: 307.876;
+  }
+  .lung {
+    position: absolute;
+    inset: 7%;
+    border-radius: 50%;
+    background: var(--lung-out);
+    border: 1px solid var(--lung-edge);
+    transform: scale(.52);
+    will-change: transform;
+    transition: background-color 1.8s ease;
+  }
+  [data-phase="in"] .lung { background: var(--lung-in); }
+  [data-phase="hold"] .lung { background: var(--lung-hold); }
+  [data-phase="out"] .lung { background: var(--lung-out); }
+  .halo {
+    position: absolute;
+    inset: -8%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, transparent 78%, var(--halo) 88%, transparent 100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .words {
+    position: relative;
+    width: 100%;
+    height: 5rem;
+  }
+  .word {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(2rem, 9vw, 2.5rem);
+    font-weight: 300;
+    line-height: 1.2;
+    opacity: 0;
+    transition: opacity .35s ease;
+  }
+  .word.is-phrase { font-size: 1.375rem; line-height: 1.35; padding: 0 .5rem; }
+  /* La palabra nueva entra cuando la anterior ya se ha ido: nunca se superponen */
+  .word.on { opacity: 1; transition: opacity .8s ease .3s; }
+  .count {
+    min-height: 1.6em;
+    font-size: 1rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    transition: opacity .6s ease;
+  }
+  .skip {
+    min-height: 2.75rem;
+    margin-top: 1.75rem;
+    padding: 0 1.25rem;
+    border-radius: 999px;
+    font-size: 1rem;
+    color: var(--ink-soft);
+    transition: opacity .6s ease, color .3s ease, visibility 0s;
+  }
+  .is-preparing .count { opacity: 0; }
+  .is-preparing .skip {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .6s ease, visibility 0s .6s;
+  }
+
+  /* ---------- Puntuación ---------- */
+  .question {
+    max-width: 18ch;
+    margin: 1rem 0 2.75rem;
+    font-size: clamp(1.625rem, 7vw, 2rem);
+    font-weight: 300;
+    line-height: 1.3;
+  }
+  .rating { display: inline-flex; flex-direction: column; }
+  .scale { display: flex; gap: min(.75rem, 3vw); }
+  .dot {
+    width: min(3.25rem, 14vw);
+    height: min(3.25rem, 14vw);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    transition: background-color .45s ease, transform .45s var(--ease), opacity .45s ease;
+  }
+  .scale.is-done .dot { opacity: .35; }
+  .scale.is-done .dot.is-picked { opacity: 1; background: var(--accent); transform: scale(1.08); }
+  .ends {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: .9rem;
+    font-size: .9375rem;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Final ---------- */
+  #s-final .question { margin-bottom: .75rem; }
+  .hint {
+    font-size: 1rem;
+    color: var(--ink-soft);
+    transition: opacity .6s ease;
+  }
+  .is-chosen .hint { opacity: 0; }
+  .results {
+    width: 100%;
+    margin-top: 1.75rem;
+    border-top: 1px solid var(--line);
+    text-align: left;
+  }
+  .row {
+    display: block;
+    width: 100%;
+    padding: 1.1rem .25rem 1.15rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    transition: background-color .5s ease;
+  }
+  .is-chosen .row { cursor: default; }
+  .row-head {
+    display: flex;
+    align-items: baseline;
+    gap: .75rem;
+  }
+  .row-fav {
+    font-size: .9375rem;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity .7s ease;
+  }
+  .row.is-fav .row-fav { opacity: 1; }
+  .row-score {
+    margin-left: auto;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    display: block;
+    height: 3px;
+    margin-top: .65rem;
+    border-radius: 3px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .bar-fill {
+    display: block;
+    height: 100%;
+    width: calc(var(--v) * 100%);
+    border-radius: 3px;
+    background: var(--bar);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 1.6s var(--ease), background-color .7s ease;
+  }
+  .results.is-shown .bar-fill { transform: scaleX(1); }
+  .row.is-fav .bar-fill { background: var(--accent); }
+  .reveal {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 1s var(--ease), opacity 1s ease;
+  }
+  .reveal-inner { overflow: hidden; }
+  .is-revealed .reveal { grid-template-rows: 1fr; opacity: 1; }
+  .real-name { display: block; margin-top: .7rem; font-size: 1.0625rem; }
+  .how { display: block; font-size: .9375rem; color: var(--ink-soft); }
+  .after {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 1s ease .3s, visibility 0s 1.3s;
+  }
+  .is-revealed .after { opacity: 1; visibility: visible; transition: opacity 1s ease .3s, visibility 0s; }
+  .btn-big {
+    width: 100%;
+    max-width: 22rem;
+    min-height: 3.75rem;
+    font-size: 1.1875rem;
+  }
+  .status {
+    min-height: 1.6em;
+    margin-top: 1rem;
+    font-size: 1rem;
+    color: var(--accent);
+  }
+  .manual {
+    width: 100%;
+    max-width: 22rem;
+    margin-top: .75rem;
+    padding: .75rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: .75rem;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: .9375rem;
+    line-height: 1.5;
+    text-align: center;
+    resize: none;
+  }
+  .manual[hidden] { display: none; }
+  .thanks {
+    margin-top: 2.25rem;
+    font-size: 1.25rem;
+    font-weight: 300;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .seed { animation: none; }
+    .bar-fill, .reveal, .dot, .knob { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <nav class="langs" id="langs">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button><span class="sep" aria-hidden="true">·</span>
+    <button type="button" data-lang="es" aria-pressed="false">ES</button><span class="sep" aria-hidden="true">·</span>
+    <button type="button" data-lang="da" aria-pressed="false">DA</button><span class="sep" aria-hidden="true">·</span>
+    <button type="button" data-lang="pl" aria-pressed="false">PL</button>
+  </nav>
+</header>
+
+<main>
+  <!-- 1. Inicio -->
+  <section class="screen" id="s-start">
+    <div class="seed" aria-hidden="true"></div>
+    <h1 class="invite" tabindex="-1" data-focus data-t="invitacion1"></h1>
+    <p class="invite-2" data-t="invitacion2"></p>
+    <p class="meta" data-t="meta"></p>
+    <button type="button" class="btn" id="begin" data-t="empezar"></button>
+    <div class="toggles">
+      <button type="button" class="switch" id="t-sound" role="switch" aria-checked="false">
+        <span data-t="sonido"></span><span class="track" aria-hidden="true"><span class="knob"></span></span>
+      </button>
+      <button type="button" class="switch" id="t-vibrate" role="switch" aria-checked="false" hidden>
+        <span data-t="vibracion"></span><span class="track" aria-hidden="true"><span class="knob"></span></span>
+      </button>
+    </div>
+    <p class="note" data-t="aviso"></p>
+  </section>
+
+  <!-- 2 y 3. Prepárate + ritmo (misma pantalla, para que el círculo no salte) -->
+  <section class="screen is-preparing" id="s-session" data-phase="rest" hidden>
+    <p class="label" id="session-label" tabindex="-1" data-focus></p>
+    <div class="stage" aria-hidden="true">
+      <svg class="ring" viewBox="0 0 100 100" focusable="false">
+        <circle class="ring-track" cx="50" cy="50" r="49"></circle>
+        <circle class="ring-fill" id="ring" cx="50" cy="50" r="49"></circle>
+      </svg>
+      <div class="lung" id="lung"><div class="halo" id="halo"></div></div>
+    </div>
+    <div class="words" aria-hidden="true">
+      <span class="word"></span>
+      <span class="word"></span>
+    </div>
+    <p class="count" id="count" aria-hidden="true"></p>
+    <button type="button" class="skip" id="skip" data-t="saltar"></button>
+  </section>
+
+  <!-- 4. Puntuación -->
+  <section class="screen" id="s-rate" hidden>
+    <p class="label" id="rate-label"></p>
+    <h2 class="question" id="rate-question" tabindex="-1" data-focus data-t="pregunta"></h2>
+    <div class="rating">
+      <div class="scale" id="scale" role="group" aria-labelledby="rate-question">
+        <button type="button" class="dot" data-v="1"></button>
+        <button type="button" class="dot" data-v="2"></button>
+        <button type="button" class="dot" data-v="3"></button>
+        <button type="button" class="dot" data-v="4"></button>
+        <button type="button" class="dot" data-v="5"></button>
+      </div>
+      <div class="ends" aria-hidden="true"><span data-t="nada"></span><span data-t="mucho"></span></div>
+    </div>
+  </section>
+
+  <!-- 5. Final -->
+  <section class="screen" id="s-final" hidden>
+    <h2 class="question" tabindex="-1" data-focus data-t="cual"></h2>
+    <p class="hint" data-t="elige"></p>
+    <div class="results" id="results"></div>
+    <div class="after">
+      <button type="button" class="btn btn-big" id="copy" data-t="copiar"></button>
+      <p class="status" id="copy-status" role="status"></p>
+      <textarea class="manual" id="manual" rows="2" readonly hidden></textarea>
+      <p class="thanks" data-t="gracias"></p>
+    </div>
+  </section>
+</main>
+
+<p class="sr" id="live" aria-live="polite"></p>
+<noscript><p style="text-align:center;padding:2rem">This exploration needs JavaScript to guide the breathing.</p></noscript>
+
+<script>
+'use strict';
+
+/* =========================================================
+   Configuración (fácil de editar)
+   ========================================================= */
+const DURACION_OBJETIVO = 60;   // segundos aprox. por ritmo
+const PREPARACION = 3;          // segundos de "prepárate" antes de cada ritmo
+const PAUSA_TRAS_NOTA = 500;    // ms entre tocar una nota y pasar de pantalla
+
+// Segundos de cada fase. Las fases de 0 s se saltan.
+const RITMOS = [
+  { letra: 'A', inhala: 5, mantenArriba: 0, exhala: 5, mantenAbajo: 0 },
+  { letra: 'B', inhala: 4, mantenArriba: 0, exhala: 6, mantenAbajo: 0 },
+  { letra: 'C', inhala: 4, mantenArriba: 4, exhala: 4, mantenAbajo: 4 },
+  { letra: 'D', inhala: 4, mantenArriba: 7, exhala: 8, mantenAbajo: 0 },
+];
+
+const TEXTOS = {
+  en: {
+    titulo: 'Breathing exploration',
+    idioma: 'Language',
+    invitacion1: 'Take five minutes for yourself.',
+    invitacion2: 'Nothing to achieve, just follow the circle.',
+    meta: '4 rhythms · about 5 minutes',
+    sonido: 'Sound',
+    vibracion: 'Vibration',
+    empezar: 'Begin',
+    aviso: 'An informal wellbeing exploration, not medical advice. If you feel dizzy or uncomfortable, stop and breathe normally.',
+    ritmo: 'Rhythm',
+    fases: { in: 'Breathe in', hold: 'Hold', out: 'Breathe out' },
+    frases: [
+      'Let your shoulders drop',
+      'Notice where you are',
+      'Soften your jaw',
+      'Let your hands rest',
+      'Feel the weight of your body',
+      'Relax your forehead',
+    ],
+    saltar: 'Skip',
+    pregunta: 'How calm do you feel right now?',
+    nada: 'not at all',
+    mucho: 'very calm',
+    deCinco: 'of 5',
+    cual: 'Which one felt best?',
+    elige: 'Choose one to reveal the names.',
+    favorito: 'your favourite',
+    copiar: 'Copy my result',
+    copiado: 'Copied - paste it in the post',
+    aMano: 'Copy this text by hand and paste it in the post.',
+    gracias: 'Thank you for taking this moment.',
+    nombres: { A: 'Coherent breathing', B: 'Long exhale', C: 'Box breathing', D: '4-7-8' },
+  },
+  es: {
+    titulo: 'Exploración de la respiración',
+    idioma: 'Idioma',
+    invitacion1: 'Tómate cinco minutos para ti.',
+    invitacion2: 'Nada que conseguir, solo sigue el círculo.',
+    meta: '4 ritmos · unos 5 minutos',
+    sonido: 'Sonido',
+    vibracion: 'Vibración',
+    empezar: 'Empezar',
+    aviso: 'Una exploración informal de bienestar, no un consejo médico. Si te mareas o te notas incómodx, para y respira normal.',
+    ritmo: 'Ritmo',
+    fases: { in: 'Inhala', hold: 'Mantén', out: 'Exhala' },
+    frases: [
+      'Deja caer los hombros',
+      'Date cuenta de dónde estás',
+      'Afloja la mandíbula',
+      'Deja descansar las manos',
+      'Siente el peso de tu cuerpo',
+      'Relaja la frente',
+    ],
+    saltar: 'Saltar',
+    pregunta: 'Cómo de tranquilx te sientes ahora mismo?',
+    nada: 'nada',
+    mucho: 'muy tranquilx',
+    deCinco: 'de 5',
+    cual: 'Cuál te ha sentado mejor?',
+    elige: 'Elige uno para descubrir los nombres.',
+    favorito: 'tu favorito',
+    copiar: 'Copiar mi resultado',
+    copiado: 'Copiado - pégalo en el post',
+    aMano: 'Copia este texto a mano y pégalo en el post.',
+    gracias: 'Gracias por regalarte este momento.',
+    nombres: { A: 'Respiración coherente', B: 'Exhalación larga', C: 'Respiración en caja', D: '4-7-8' },
+  },
+  da: {
+    titulo: 'Udforskning af vejrtrækning', // REVISAR DA
+    idioma: 'Sprog',
+    invitacion1: 'Giv dig selv fem minutter.',
+    invitacion2: 'Intet at opnå, bare følg cirklen.', // REVISAR DA
+    meta: '4 rytmer · cirka 5 minutter',
+    sonido: 'Lyd',
+    vibracion: 'Vibration',
+    empezar: 'Begynd',
+    aviso: 'En uformel udforskning af velvære, ikke medicinsk rådgivning. Hvis du bliver svimmel eller føler dig utilpas, så stop og træk vejret normalt.',
+    ritmo: 'Rytme',
+    fases: { in: 'Ånd ind', hold: 'Hold', out: 'Ånd ud' },
+    frases: [ // REVISAR DA
+      'Lad skuldrene falde ned',
+      'Læg mærke til, hvor du er',
+      'Slap af i kæben',
+      'Lad hænderne hvile',
+      'Mærk vægten af din krop',
+      'Slap af i panden',
+    ],
+    saltar: 'Spring over',
+    pregunta: 'Hvor rolig føler du dig lige nu?',
+    nada: 'slet ikke',
+    mucho: 'meget rolig',
+    deCinco: 'ud af 5',
+    cual: 'Hvilken føltes bedst?',
+    elige: 'Vælg én for at se navnene.',
+    favorito: 'din favorit',
+    copiar: 'Kopiér mit resultat',
+    copiado: 'Kopieret - indsæt det i opslaget', // REVISAR DA
+    aMano: 'Kopiér teksten manuelt og indsæt den i opslaget.', // REVISAR DA
+    gracias: 'Tak, fordi du gav dig selv dette øjeblik.', // REVISAR DA
+    nombres: { A: 'Kohærent vejrtrækning', B: 'Lang udånding', C: 'Boksvejrtrækning', D: '4-7-8' },
+  },
+  pl: {
+    titulo: 'Eksploracja oddechu', // REVISAR PL
+    idioma: 'Język',
+    invitacion1: 'Daj sobie pięć minut.',
+    invitacion2: 'Nic do osiągnięcia, po prostu podążaj za kołem.', // REVISAR PL
+    meta: '4 rytmy · około 5 minut',
+    sonido: 'Dźwięk',
+    vibracion: 'Wibracje',
+    empezar: 'Zacznij',
+    aviso: 'Nieformalna eksploracja samopoczucia, a nie porada medyczna. Jeśli poczujesz zawroty głowy lub dyskomfort, przerwij i oddychaj normalnie.',
+    ritmo: 'Rytm',
+    fases: { in: 'Wdech', hold: 'Zatrzymaj', out: 'Wydech' },
+    frases: [ // REVISAR PL
+      'Opuść ramiona',
+      'Zauważ, gdzie jesteś',
+      'Rozluźnij szczękę',
+      'Pozwól dłoniom odpocząć',
+      'Poczuj ciężar swojego ciała',
+      'Rozluźnij czoło',
+    ],
+    saltar: 'Pomiń',
+    pregunta: 'Na ile spokojnie czujesz się teraz?', // REVISAR PL
+    nada: 'wcale',
+    mucho: 'bardzo spokojnie', // REVISAR PL
+    deCinco: 'z 5',
+    cual: 'Który najbardziej ci odpowiadał?', // REVISAR PL
+    elige: 'Wybierz jeden, aby zobaczyć nazwy.',
+    favorito: 'twój ulubiony',
+    copiar: 'Skopiuj mój wynik',
+    copiado: 'Skopiowano - wklej to pod postem', // REVISAR PL
+    aMano: 'Skopiuj ten tekst ręcznie i wklej go pod postem.', // REVISAR PL
+    gracias: 'Dziękuję, że dajesz sobie tę chwilę.', // REVISAR PL
+    nombres: { A: 'Oddychanie koherentne', B: 'Długi wydech', C: 'Oddychanie kwadratowe', D: '4-7-8' },
+  },
+};
+
+/* =========================================================
+   Estado
+   ========================================================= */
+const ESCALA_MIN = 0.52;     // círculo con los pulmones vacíos
+const ESCALA_MAX = 1;        // círculo con los pulmones llenos
+const ESCALA_QUIETA = 0.76;  // tamaño fijo con prefers-reduced-motion
+const LATIDO_HALO = 2.4;     // segundos aprox. por latido del halo en "Hold"
+const CIRCUNFERENCIA = 2 * Math.PI * 49;
+
+const state = {
+  lang: 'en',
+  order: [],      // orden aleatorio de las letras
+  step: 0,        // índice dentro de order
+  scores: {},     // { A: 3, ... }
+  fav: null,
+  phrases: [],    // orden aleatorio de las frases de preparación
+  sound: false,
+  vibrate: false,
+  word: null,     // lo que muestra ahora la palabra grande (para re-traducirla)
+  copy: null,     // null | 'ok' | 'manual'
+  rateLocked: false,
+};
+let run = null;   // ritmo en curso
+
+const $ = sel => document.querySelector(sel);
+const screens = {
+  start: $('#s-start'),
+  session: $('#s-session'),
+  rate: $('#s-rate'),
+  final: $('#s-final'),
+};
+const lung = $('#lung');
+const halo = $('#halo');
+const ring = $('#ring');
+const count = $('#count');
+const words = Array.from(document.querySelectorAll('.word'));
+const live = $('#live');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+const t = key => (TEXTOS[state.lang][key] !== undefined ? TEXTOS[state.lang][key] : TEXTOS.en[key]);
+const letras = RITMOS.map(r => r.letra);
+const ritmoDe = letra => RITMOS.find(r => r.letra === letra);
+
+function barajar(lista) {
+  const a = lista.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Un solo temporizador pendiente a la vez, para que nada se cruce
+let pending = 0;
+function later(fn, ms) { clearTimeout(pending); pending = setTimeout(fn, ms); }
+
+function announce(text) {
+  live.textContent = '';
+  setTimeout(() => { live.textContent = text; }, 40);
+}
+
+/* =========================================================
+   Pantallas (fundido de salida, luego de entrada)
+   ========================================================= */
+let current = screens.start;
+let screenToken = 0;
+
+function showScreen(next, before) {
+  const token = ++screenToken;
+  const prev = current;
+  current = next;
+  prev.classList.remove('is-in');
+  const wait = prev === next ? 0 : (reduceMotion.matches ? 300 : 700);
+  return new Promise(resolve => {
+    setTimeout(() => {
+      if (token !== screenToken) return;
+      if (before) before();
+      // Se ocultan todas las demás (no solo la anterior) por si dos cambios se cruzaron
+      Object.values(screens).forEach(s => {
+        if (s !== next) { s.hidden = true; s.classList.remove('is-in'); }
+      });
+      next.hidden = false;
+      void next.offsetWidth;            // fuerza el reflow para que el fundido arranque
+      next.classList.add('is-in');
+      window.scrollTo(0, 0);
+      const focusTarget = next.querySelector('[data-focus]');
+      if (focusTarget) focusTarget.focus({ preventScroll: true });
+      resolve();
+    }, wait);
+  });
+}
+
+/* =========================================================
+   Idioma
+   ========================================================= */
+function applyTexts() {
+  document.documentElement.lang = state.lang;
+  document.title = t('titulo');
+  document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll('#langs button').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.lang === state.lang));
+  });
+  $('#langs').setAttribute('aria-label', t('idioma'));
+  document.querySelectorAll('.dot').forEach(d => {
+    const v = Number(d.dataset.v);
+    const extremo = v === 1 ? ', ' + t('nada') : v === 5 ? ', ' + t('mucho') : '';
+    d.setAttribute('aria-label', `${v} ${t('deCinco')}${extremo}`);
+  });
+  renderLabels();
+  refreshWord();
+  renderResults();
+  renderCopy();
+}
+
+function renderLabels() {
+  const letra = state.order[state.step];
+  if (!letra) return;
+  const n = `${state.step + 1} / ${state.order.length}`;
+  $('#session-label').innerHTML = '';
+  $('#session-label').append(`${t('ritmo')} ${letra}`, Object.assign(document.createElement('span'), {
+    className: 'step', textContent: `  ·  ${n}`,
+  }));
+  $('#rate-label').textContent = `${t('ritmo')} ${letra}`;
+}
+
+/* =========================================================
+   La palabra grande (con fundido cruzado)
+   ========================================================= */
+function wordText(w) {
+  if (!w) return '';
+  return w.type === 'phase' ? t('fases')[w.fase] : t('frases')[w.i];
+}
+
+function setWord(w) {
+  state.word = w;
+  const on = words.find(el => el.classList.contains('on'));
+  const off = words.find(el => el !== on);
+  if (on) on.classList.remove('on');
+  off.textContent = wordText(w);
+  off.classList.toggle('is-phrase', !!w && w.type === 'phrase');
+  if (w) off.classList.add('on');
+}
+
+function refreshWord() {
+  const on = words.find(el => el.classList.contains('on'));
+  if (on && state.word) on.textContent = wordText(state.word);
+}
+
+/* =========================================================
+   Sonido, vibración y wake lock (todo opcional)
+   ========================================================= */
+let audioCtx = null;
+const AudioCtor = window.AudioContext || window.webkitAudioContext;
+
+function ensureAudio() {
+  if (!AudioCtor) return null;
+  if (!audioCtx) audioCtx = new AudioCtor();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Tono grave y suave: sol al inhalar, fa al mantener, re al exhalar
+const TONOS = { in: 196.0, hold: 174.61, out: 146.83 };
+
+function chime(fase) {
+  if (!state.sound) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + 0.02;
+  const f = TONOS[fase];
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.16, t0 + 0.14);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.6);
+  const filtro = ctx.createBiquadFilter();
+  filtro.type = 'lowpass';
+  filtro.frequency.value = 1100;
+  env.connect(filtro).connect(ctx.destination);
+  // El armónico ayuda a que se oiga en altavoces de móvil sin dejar de ser grave
+  [[f, 1], [f * 2, 0.3], [f * 3, 0.06]].forEach(([freq, amp]) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    g.gain.value = amp;
+    osc.connect(g).connect(env);
+    osc.start(t0);
+    osc.stop(t0 + 2.7);
+  });
+}
+
+const canVibrate = 'vibrate' in navigator && window.matchMedia('(pointer: coarse)').matches;
+function buzz() { if (state.vibrate && canVibrate) navigator.vibrate(35); }
+
+let wakeLock = null;
+let wantWake = false;
+async function requestWake() {
+  wantWake = true;
+  if (!('wakeLock' in navigator) || document.hidden) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+  } catch (e) { /* sin wake lock, no pasa nada */ }
+}
+function releaseWake() {
+  wantWake = false;
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+
+/* =========================================================
+   Guía de respiración
+   ========================================================= */
+function buildTimeline(r) {
+  const fases = [
+    ['in', r.inhala], ['holdTop', r.mantenArriba], ['out', r.exhala], ['holdBottom', r.mantenAbajo],
+  ].filter(([, s]) => s > 0);
+  const ciclo = fases.reduce((sum, [, s]) => sum + s, 0);
+  const ciclos = Math.max(1, Math.round(DURACION_OBJETIVO / ciclo));
+  const segs = [];
+  let start = 0;
+  for (let c = 0; c < ciclos; c++) {
+    for (const [tipo, dur] of fases) {
+      segs.push({ tipo, start, dur });
+      start += dur;
+    }
+  }
+  return { segs, total: start };
+}
+
+const suave = p => 0.5 - 0.5 * Math.cos(Math.PI * p);   // curva tipo seno: arranca y frena despacio
+const faseVisible = tipo => (tipo === 'in' ? 'in' : tipo === 'out' ? 'out' : 'hold');
+
+function restVisuals() {
+  lung.style.transform = `scale(${reduceMotion.matches ? ESCALA_QUIETA : ESCALA_MIN})`;
+  halo.style.opacity = '0';
+  ring.style.strokeDashoffset = CIRCUNFERENCIA;
+  count.textContent = '';
+}
+
+function startPrepare() {
+  const i = state.phrases[state.step % state.phrases.length];
+  setWord({ type: 'phrase', i });
+  announce(`${t('ritmo')} ${state.order[state.step]}. ${t('frases')[i]}`);
+  later(startBreathing, PREPARACION * 1000);
+}
+
+function startBreathing() {
+  const { segs, total } = buildTimeline(ritmoDe(state.order[state.step]));
+  run = { segs, total, start: performance.now(), idx: -1, raf: 0, paused: false, pausedAt: 0, lastCount: null };
+  screens.session.classList.remove('is-preparing');
+  run.raf = requestAnimationFrame(frame);
+}
+
+function frame(now) {
+  if (!run || run.paused) return;
+  const secs = Math.max(0, (now - run.start) / 1000);
+  if (secs >= run.total) { endRhythm(false); return; }
+
+  let i = Math.max(run.idx, 0);
+  while (i < run.segs.length - 1 && secs >= run.segs[i].start + run.segs[i].dur) i++;
+  const seg = run.segs[i];
+  if (i !== run.idx) { run.idx = i; onPhase(seg); }
+
+  const p = Math.min(1, Math.max(0, (secs - seg.start) / seg.dur));
+  let s;
+  let h = 0;
+  if (reduceMotion.matches) {
+    s = ESCALA_QUIETA;
+  } else {
+    if (seg.tipo === 'in') s = ESCALA_MIN + (ESCALA_MAX - ESCALA_MIN) * suave(p);
+    else if (seg.tipo === 'out') s = ESCALA_MAX - (ESCALA_MAX - ESCALA_MIN) * suave(p);
+    else s = seg.tipo === 'holdTop' ? ESCALA_MAX : ESCALA_MIN;
+    if (seg.tipo === 'holdTop' || seg.tipo === 'holdBottom') {
+      // Latidos enteros: el halo empieza y acaba apagado, sin cortes
+      const latidos = Math.max(1, Math.round(seg.dur / LATIDO_HALO));
+      h = 0.5 - 0.5 * Math.cos(2 * Math.PI * p * latidos);
+    }
+  }
+  lung.style.transform = `scale(${s.toFixed(4)})`;
+  halo.style.opacity = h.toFixed(3);
+  halo.style.transform = `scale(${(1 + 0.035 * h).toFixed(4)})`;
+  ring.style.strokeDashoffset = (CIRCUNFERENCIA * (1 - secs / run.total)).toFixed(2);
+
+  const left = Math.ceil(seg.start + seg.dur - secs - 1e-6);
+  if (left !== run.lastCount) { run.lastCount = left; count.textContent = left; }
+
+  run.raf = requestAnimationFrame(frame);
+}
+
+function onPhase(seg) {
+  const fase = faseVisible(seg.tipo);
+  screens.session.dataset.phase = fase;
+  setWord({ type: 'phase', fase });
+  announce(t('fases')[fase]);
+  chime(fase);
+  buzz();
+}
+
+function endRhythm(skipped) {
+  if (!run) return;
+  cancelAnimationFrame(run.raf);
+  run = null;
+  if (skipped) { goRate(); return; }
+  ring.style.strokeDashoffset = 0;
+  halo.style.opacity = '0';
+  setWord(null);
+  later(goRate, 900);
+}
+
+/* =========================================================
+   Puntuación
+   ========================================================= */
+function goRate() {
+  showScreen(screens.rate, () => {
+    state.rateLocked = false;
+    $('#scale').classList.remove('is-done');
+    document.querySelectorAll('.dot').forEach(d => d.classList.remove('is-picked'));
+    renderLabels();
+  });
+}
+
+function pick(dot) {
+  if (state.rateLocked) return;
+  state.rateLocked = true;
+  state.scores[state.order[state.step]] = Number(dot.dataset.v);
+  dot.classList.add('is-picked');
+  $('#scale').classList.add('is-done');
+  later(() => {
+    state.step++;
+    if (state.step < state.order.length) goSession();
+    else goFinal();
+  }, PAUSA_TRAS_NOTA);
+}
+
+/* =========================================================
+   Final
+   ========================================================= */
+let rows = [];
+
+function buildResults() {
+  const box = $('#results');
+  box.innerHTML = '';
+  box.classList.remove('is-shown');
+  rows = letras.map(letra => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'row';
+    row.dataset.letra = letra;
+    row.setAttribute('aria-pressed', 'false');
+    row.innerHTML = `
+      <span class="row-head">
+        <span class="row-name"></span>
+        <span class="row-fav"></span>
+        <span class="row-score"><span class="n"></span><span class="sr of"></span></span>
+      </span>
+      <span class="bar" aria-hidden="true"><span class="bar-fill"></span></span>
+      <span class="reveal"><span class="reveal-inner">
+        <span class="real-name"></span>
+        <span class="how"></span>
+      </span></span>`;
+    row.querySelector('.bar-fill').style.setProperty('--v', (state.scores[letra] || 0) / 5);
+    row.addEventListener('click', () => choose(letra));
+    box.append(row);
+    return row;
+  });
+  renderResults();
+}
+
+function renderResults() {
+  const fases = t('fases');
+  rows.forEach(row => {
+    const letra = row.dataset.letra;
+    const r = ritmoDe(letra);
+    const pasos = [[fases.in, r.inhala], [fases.hold, r.mantenArriba], [fases.out, r.exhala], [fases.hold, r.mantenAbajo]]
+      .filter(([, s]) => s > 0)
+      .map(([nombre, s]) => `${nombre} ${s} s`)
+      .join(' · ');
+    row.querySelector('.row-name').textContent = `${t('ritmo')} ${letra}`;
+    row.querySelector('.row-fav').textContent = t('favorito');
+    row.querySelector('.n').textContent = state.scores[letra];
+    row.querySelector('.of').textContent = ` ${t('deCinco')}`;
+    row.querySelector('.real-name').textContent = t('nombres')[letra];
+    row.querySelector('.how').textContent = pasos;
+  });
+}
+
+function choose(letra) {
+  if (state.fav) return;
+  state.fav = letra;
+  rows.forEach(row => {
+    const isFav = row.dataset.letra === letra;
+    row.classList.toggle('is-fav', isFav);
+    row.setAttribute('aria-pressed', String(isFav));
+    row.setAttribute('aria-disabled', 'true');
+  });
+  screens.final.classList.add('is-chosen');
+  announce(`${t('favorito')}: ${t('ritmo')} ${letra}, ${t('nombres')[letra]}`);
+  setTimeout(() => screens.final.classList.add('is-revealed'), 450);
+}
+
+function resultLine() {
+  const notas = letras.map(l => l + state.scores[l]).join(' ');
+  return `breathing exploration | fav: ${state.fav} | ${notas} | orden: ${state.order.join('-')} | idioma: ${state.lang}`;
+}
+
+async function copyResult() {
+  const text = resultLine();
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+    await navigator.clipboard.writeText(text);
+    state.copy = 'ok';
+    renderCopy();
+  } catch (e) {
+    state.copy = 'manual';
+    renderCopy();
+    const manual = $('#manual');
+    manual.focus();
+    manual.select();
+    manual.setSelectionRange(0, text.length);
+  }
+}
+
+function renderCopy() {
+  const status = $('#copy-status');
+  const manual = $('#manual');
+  status.textContent = state.copy === 'ok' ? t('copiado') : state.copy === 'manual' ? t('aMano') : '';
+  manual.hidden = state.copy !== 'manual';
+  if (state.fav) manual.value = resultLine();
+}
+
+/* =========================================================
+   Flujo
+   ========================================================= */
+function begin() {
+  if (state.sound) ensureAudio();
+  requestWake();
+  state.order = barajar(letras);
+  state.phrases = barajar(TEXTOS.en.frases.map((_, i) => i));
+  state.step = 0;
+  state.scores = {};
+  state.fav = null;
+  state.copy = null;
+  goSession();
+}
+
+function goSession() {
+  showScreen(screens.session, () => {
+    screens.session.classList.add('is-preparing');
+    screens.session.dataset.phase = 'rest';
+    restVisuals();
+    renderLabels();
+    setWord(null);
+  }).then(startPrepare);
+}
+
+function goFinal() {
+  releaseWake();
+  showScreen(screens.final, () => {
+    screens.final.classList.remove('is-chosen', 'is-revealed');
+    buildResults();
+    renderCopy();
+  }).then(() => setTimeout(() => $('#results').classList.add('is-shown'), 250));
+}
+
+/* =========================================================
+   Eventos
+   ========================================================= */
+document.querySelectorAll('#langs button').forEach(b => {
+  b.addEventListener('click', () => { state.lang = b.dataset.lang; applyTexts(); });
+});
+
+$('#begin').addEventListener('click', begin);
+$('#skip').addEventListener('click', () => endRhythm(true));
+$('#copy').addEventListener('click', copyResult);
+document.querySelectorAll('.dot').forEach(d => d.addEventListener('click', () => pick(d)));
+
+const soundSwitch = $('#t-sound');
+if (!AudioCtor) soundSwitch.hidden = true;
+soundSwitch.addEventListener('click', () => {
+  state.sound = !state.sound;
+  soundSwitch.setAttribute('aria-checked', String(state.sound));
+  if (state.sound) chime('in');          // muestra cómo suena
+});
+
+const vibrateSwitch = $('#t-vibrate');
+if (canVibrate) vibrateSwitch.hidden = false;
+vibrateSwitch.addEventListener('click', () => {
+  state.vibrate = !state.vibrate;
+  vibrateSwitch.setAttribute('aria-checked', String(state.vibrate));
+  buzz();
+});
+
+// Si la pestaña se oculta, el ritmo se pausa y sigue donde estaba al volver
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (run && !run.paused) {
+      run.paused = true;
+      run.pausedAt = performance.now();
+      cancelAnimationFrame(run.raf);
+    }
+  } else {
+    if (run && run.paused) {
+      run.start += performance.now() - run.pausedAt;
+      run.paused = false;
+      run.raf = requestAnimationFrame(frame);
+    }
+    if (wantWake) requestWake();
+  }
+});
+
+applyTexts();
+requestAnimationFrame(() => screens.start.classList.add('is-in'));
+</script>
+</body>
+</html>
