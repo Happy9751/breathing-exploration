@@ -237,6 +237,24 @@
   .switch[aria-checked="true"] { color: var(--ink); }
   .switch[aria-checked="true"] .track { background: var(--tint-strong); }
   .switch[aria-checked="true"] .knob { transform: translateX(1rem); background: var(--accent); }
+  .vib { display: inline-flex; align-items: center; gap: .35rem; }
+  .vib[hidden] { display: none; }
+  .test-btn {
+    position: relative;
+    padding: .15rem .7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: .875rem;
+    color: var(--ink-soft);
+  }
+  .test-btn::before { content: ""; position: absolute; inset: -.6rem -.25rem; }  /* zona táctil de 44 px */
+  .vib-status {
+    margin-top: .5rem;
+    font-size: .875rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .vib-status:empty { display: none; }
   .note {
     max-width: 25rem;
     margin-top: 2rem;
@@ -504,10 +522,14 @@
       <button type="button" class="switch" id="t-sound" role="switch" aria-checked="false">
         <span data-t="sonido"></span><span class="track" aria-hidden="true"><span class="knob"></span></span>
       </button>
-      <button type="button" class="switch" id="t-vibrate" role="switch" aria-checked="false" hidden>
-        <span data-t="vibracion"></span><span class="track" aria-hidden="true"><span class="knob"></span></span>
-      </button>
+      <span class="vib" id="vib" hidden>
+        <button type="button" class="switch" id="t-vibrate" role="switch" aria-checked="false">
+          <span data-t="vibracion"></span><span class="track" aria-hidden="true"><span class="knob"></span></span>
+        </button>
+        <button type="button" class="test-btn" id="t-test" data-t="probar"></button>
+      </span>
     </div>
+    <p class="vib-status" id="vib-status" role="status"></p>
     <p class="note" data-t="aviso"></p>
   </section>
 
@@ -589,9 +611,11 @@ const TEXTOS = {
     meta: '4 rhythms · about 5 minutes',
     sonido: 'Sound',
     vibracion: 'Vibration',
+    probar: 'Test',
     empezar: 'Begin',
     aviso: 'An informal wellbeing exploration, not medical advice. If you feel dizzy or uncomfortable, stop and breathe normally.',
     ritmo: 'Rhythm',
+    de: 'of',
     fases: { in: 'Breathe in', hold: 'Hold', out: 'Breathe out' },
     frases: [
       'Let your shoulders drop',
@@ -623,9 +647,11 @@ const TEXTOS = {
     meta: '4 ritmos · unos 5 minutos',
     sonido: 'Sonido',
     vibracion: 'Vibración',
+    probar: 'Probar',
     empezar: 'Empezar',
     aviso: 'Una exploración informal de bienestar, no un consejo médico. Si te mareas o te notas incómodx, para y respira normal.',
     ritmo: 'Ritmo',
+    de: 'de',
     fases: { in: 'Inhala', hold: 'Mantén', out: 'Exhala' },
     frases: [
       'Deja caer los hombros',
@@ -657,9 +683,11 @@ const TEXTOS = {
     meta: '4 rytmer · cirka 5 minutter',
     sonido: 'Lyd',
     vibracion: 'Vibration',
+    probar: 'Test',
     empezar: 'Begynd',
     aviso: 'En uformel udforskning af velvære, ikke medicinsk rådgivning. Hvis du bliver svimmel eller føler dig utilpas, så stop og træk vejret normalt.',
     ritmo: 'Rytme',
+    de: 'af',
     fases: { in: 'Ånd ind', hold: 'Hold', out: 'Ånd ud' },
     frases: [ // REVISAR DA
       'Lad skuldrene falde ned',
@@ -691,9 +719,11 @@ const TEXTOS = {
     meta: '4 rytmy · około 5 minut',
     sonido: 'Dźwięk',
     vibracion: 'Wibracje',
+    probar: 'Test',
     empezar: 'Zacznij',
     aviso: 'Nieformalna eksploracja samopoczucia, a nie porada medyczna. Jeśli poczujesz zawroty głowy lub dyskomfort, przerwij i oddychaj normalnie.',
     ritmo: 'Rytm',
+    de: 'z',
     fases: { in: 'Wdech', hold: 'Zatrzymaj', out: 'Wydech' },
     frases: [ // REVISAR PL
       'Opuść ramiona',
@@ -833,15 +863,15 @@ function applyTexts() {
   renderCopy();
 }
 
+// En pantalla los ritmos se ven por posición (1-4); la letra solo vive por dentro y en el resultado
 function renderLabels() {
-  const letra = state.order[state.step];
-  if (!letra) return;
-  const n = `${state.step + 1} / ${state.order.length}`;
+  if (!state.order[state.step]) return;
+  const pos = state.step + 1;
   $('#session-label').innerHTML = '';
-  $('#session-label').append(`${t('ritmo')} ${letra}`, Object.assign(document.createElement('span'), {
-    className: 'step', textContent: `  ·  ${n}`,
+  $('#session-label').append(`${t('ritmo')} ${pos}`, Object.assign(document.createElement('span'), {
+    className: 'step', textContent: ` ${t('de')} ${state.order.length}`,
   }));
-  $('#rate-label').textContent = `${t('ritmo')} ${letra}`;
+  $('#rate-label').textContent = `${t('ritmo')} ${pos}`;
 }
 
 /* =========================================================
@@ -910,8 +940,38 @@ function chime(fase) {
   });
 }
 
-const canVibrate = 'vibrate' in navigator && window.matchMedia('(pointer: coarse)').matches;
-function buzz() { if (state.vibrate && canVibrate) navigator.vibrate(35); }
+// Chrome solo deja vibrar después de que la persona haya tocado la página: el primer pulso
+// sale del propio toque en el interruptor o en "Test", y los de cada fase llegan tras tocar "Begin".
+const canVibrate = 'vibrate' in navigator;
+const PULSO_FASE = 120;   // ms; pulsos más cortos no llegan a notarse en algunos motores Android
+const PULSO_TEST = 200;
+function buzz() { if (state.vibrate && canVibrate) navigator.vibrate(PULSO_FASE); }
+
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  const reglas = [
+    [/SamsungBrowser\/(\d+)/, 'Samsung Internet'],
+    [/EdgA?\/(\d+)/, 'Edge'],
+    [/OPR\/(\d+)/, 'Opera'],
+    [/FxiOS\/(\d+)/, 'Firefox iOS'],
+    [/Firefox\/(\d+)/, 'Firefox'],
+    [/CriOS\/(\d+)/, 'Chrome iOS'],
+    [/Chrome\/(\d+)/, 'Chrome'],
+    [/Version\/(\d+).*Safari/, 'Safari'],
+  ];
+  const regla = reglas.find(([re]) => re.test(ua));
+  const nombre = regla ? `${regla[1]} ${ua.match(regla[0])[1]}` : 'unknown browser';
+  const so = /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+  // Los navegadores dentro de otras apps (WebView) y los iframes suelen bloquear la vibración
+  const extras = [/; wv\)/.test(ua) ? 'WebView' : '', window.self !== window.top ? 'iframe' : ''];
+  return [nombre, so, ...extras].filter(Boolean).join(' · ');
+}
+
+function testVibration() {
+  let ok;
+  try { ok = navigator.vibrate(PULSO_TEST); } catch (e) { ok = false; }
+  $('#vib-status').textContent = `vibrate(${PULSO_TEST}) → ${ok} · ${detectBrowser()}`;
+}
 
 let wakeLock = null;
 let wantWake = false;
@@ -960,7 +1020,7 @@ function restVisuals() {
 function startPrepare() {
   const i = state.phrases[state.step % state.phrases.length];
   setWord({ type: 'phrase', i });
-  announce(`${t('ritmo')} ${state.order[state.step]}. ${t('frases')[i]}`);
+  announce(`${t('ritmo')} ${state.step + 1}. ${t('frases')[i]}`);
   later(startBreathing, PREPARACION * 1000);
 }
 
@@ -1061,11 +1121,13 @@ function buildResults() {
   const box = $('#results');
   box.innerHTML = '';
   box.classList.remove('is-shown');
-  rows = letras.map(letra => {
+  // Filas en el orden en que se hicieron, para que "Rhythm 1" sea el primero que respiraste
+  rows = state.order.map((letra, k) => {
     const row = document.createElement('button');
     row.type = 'button';
     row.className = 'row';
     row.dataset.letra = letra;
+    row.dataset.pos = k + 1;
     row.setAttribute('aria-pressed', 'false');
     row.innerHTML = `
       <span class="row-head">
@@ -1095,7 +1157,7 @@ function renderResults() {
       .filter(([, s]) => s > 0)
       .map(([nombre, s]) => `${nombre} ${s} s`)
       .join(' · ');
-    row.querySelector('.row-name').textContent = `${t('ritmo')} ${letra}`;
+    row.querySelector('.row-name').textContent = `${t('ritmo')} ${row.dataset.pos}`;
     row.querySelector('.row-fav').textContent = t('favorito');
     row.querySelector('.n').textContent = state.scores[letra];
     row.querySelector('.of').textContent = ` ${t('deCinco')}`;
@@ -1114,7 +1176,7 @@ function choose(letra) {
     row.setAttribute('aria-disabled', 'true');
   });
   screens.final.classList.add('is-chosen');
-  announce(`${t('favorito')}: ${t('ritmo')} ${letra}, ${t('nombres')[letra]}`);
+  announce(`${t('favorito')}: ${t('ritmo')} ${state.order.indexOf(letra) + 1}, ${t('nombres')[letra]}`);
   setTimeout(() => screens.final.classList.add('is-revealed'), 450);
 }
 
@@ -1203,12 +1265,13 @@ soundSwitch.addEventListener('click', () => {
 });
 
 const vibrateSwitch = $('#t-vibrate');
-if (canVibrate) vibrateSwitch.hidden = false;
+if (canVibrate) $('#vib').hidden = false;
 vibrateSwitch.addEventListener('click', () => {
   state.vibrate = !state.vibrate;
   vibrateSwitch.setAttribute('aria-checked', String(state.vibrate));
-  buzz();
+  buzz();                                // dentro del toque: también desbloquea la vibración
 });
+$('#t-test').addEventListener('click', testVibration);
 
 // Si la pestaña se oculta, el ritmo se pausa y sigue donde estaba al volver
 document.addEventListener('visibilitychange', () => {
